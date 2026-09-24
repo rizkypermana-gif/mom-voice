@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Dikte Suara MoM</title>
+<style>
+  body{font-family:Arial;text-align:center;padding:40px 20px;background:#f2f4f7;}
+  button{padding:16px 24px;font-size:16px;border:none;border-radius:8px;color:#fff;cursor:pointer;}
+  #startBtn{background:#16a34a;} #stopBtn{background:#dc2626;display:none;}
+  #status{margin-top:16px;color:#555;font-size:14px;}
+  #liveText{margin-top:20px;padding:14px;background:#fff;border-radius:8px;min-height:60px;text-align:left;}
+</style>
+</head>
+<body>
+  <h3>🎤 Dikte Poin Pembahasan MoM</h3>
+  <p style="color:#888;font-size:13px;">Bicara natural, tiap jeda kalimat otomatis terkirim ke form MoM di tab asal.</p>
+  <button id="startBtn" onclick="startRec()">Mulai Mic</button>
+  <button id="stopBtn" onclick="stopRec()">Selesai</button>
+  <div id="status"></div>
+  <div id="liveText"></div>
+<script>
+  let recognition = null, active = false;
+  function startRec() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { document.getElementById('status').textContent = 'Browser tidak mendukung fitur ini. Pakai Chrome.'; return; }
+    recognition = new SR();
+    recognition.lang = 'id-ID';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      let interim = '', final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) final += t; else interim += t;
+      }
+      document.getElementById('liveText').textContent = final || interim;
+      if (final && window.opener) {
+        window.opener.postMessage({ type: 'MOM_VOICE_TEXT', text: final.trim() }, '*');
+      }
+    };
+    recognition.onerror = (e) => {
+      if (e.error === 'no-speech') return;
+      document.getElementById('status').textContent = 'Error: ' + e.error;
+    };
+    recognition.onend = () => { if (active) { try { recognition.start(); } catch(err){} } };
+
+    recognition.start();
+    active = true;
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('stopBtn').style.display = 'inline-block';
+    document.getElementById('status').textContent = 'Mendengarkan...';
+  }
+  function stopRec() {
+    active = false;
+    if (recognition) recognition.stop();
+    document.getElementById('startBtn').style.display = 'inline-block';
+    document.getElementById('stopBtn').style.display = 'none';
+    document.getElementById('status').textContent = 'Berhenti.';
+  }
+</script>
+</body>
+</html>
